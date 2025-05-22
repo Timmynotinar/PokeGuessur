@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Preloaded Pokémon Viewer (Gen 1–9)</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      margin-top: 50px;
+    }
+    img {
+      width: 200px;
+      height: 200px;
+    }
+    #counter {
+      font-size: 1.5em;
+      margin-top: 20px;
+    }
+    #timer {
+      font-size: 1.2em;
+      color: gray;
+    }
+    #loading {
+      font-size: 1.5em;
+      color: darkorange;
+    }
+    #progressBar {
+      width: 60%;
+      height: 20px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Preloaded Pokémon Viewer (Gen 1–9)</h1>
+  <div id="loading">Loading 200 Pokémon images...</div>
+  <progress id="progressBar" value="0" max="200"></progress>
+  <img id="pokemonImage" src="" style="display:none;" alt="Press Spacebar to Show Pokémon" />
+  <div id="counter" style="display:none;">Pokémon shown: 0</div>
+  <div id="timer" style="display:none;">Time left: 60 seconds</div>
+
+  <script>
+    const MAX_POKEMON_ID = 1010;
+    const TOTAL_IMAGES = 200;
+
+    const pokemonImage = document.getElementById("pokemonImage");
+    const counterDisplay = document.getElementById("counter");
+    const timerDisplay = document.getElementById("timer");
+    const loadingDisplay = document.getElementById("loading");
+    const progressBar = document.getElementById("progressBar");
+
+    let preloadedImages = [];
+    let currentIndex = 0;
+    let count = 0;
+    let timeLeft = 60;
+    let timerStarted = false;
+    let timer;
+
+    function getRandomPokemonId() {
+      return Math.floor(Math.random() * MAX_POKEMON_ID) + 1;
+    }
+
+    function getPokemonImageUrl(id) {
+      return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+    }
+
+    function preloadImages() {
+      const usedIds = new Set();
+
+      function loadNextUniqueImage() {
+        if (preloadedImages.length >= TOTAL_IMAGES) {
+          onPreloadingComplete();
+          return;
+        }
+
+        let id;
+        do {
+          id = getRandomPokemonId();
+        } while (usedIds.has(id));
+
+        usedIds.add(id);
+        const img = new Image();
+
+        img.onload = () => {
+          preloadedImages.push(img);
+          progressBar.value = preloadedImages.length;
+          loadNextUniqueImage();
+        };
+
+        img.onerror = () => {
+          usedIds.delete(id); // Allow retry
+          loadNextUniqueImage(); // Retry another
+        };
+
+        img.src = getPokemonImageUrl(id);
+      }
+
+      loadNextUniqueImage();
+    }
+
+    function onPreloadingComplete() {
+      loadingDisplay.style.display = "none";
+      progressBar.style.display = "none";
+      pokemonImage.style.display = "inline-block";
+      counterDisplay.style.display = "block";
+      timerDisplay.style.display = "block";
+      document.addEventListener("keydown", handleKeyPress);
+    }
+
+    function showNextPokemon() {
+      if (currentIndex >= preloadedImages.length) return;
+      pokemonImage.src = preloadedImages[currentIndex].src;
+      count++;
+      counterDisplay.textContent = `Pokémon shown: ${count}`;
+      currentIndex++;
+    }
+
+    function startTimer() {
+      timer = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = `Time left: ${timeLeft} seconds`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          document.removeEventListener("keydown", handleKeyPress);
+          timerDisplay.textContent = "Time's up!";
+        }
+      }, 1000);
+    }
+
+    function handleKeyPress(e) {
+      if (e.code === "Space") {
+        e.preventDefault();
+        if (!timerStarted) {
+          timerStarted = true;
+          startTimer();
+        }
+        showNextPokemon();
+      }
+    }
+
+    // Start preloading on load
+    preloadImages();
+  </script>
+</body>
+</html>
